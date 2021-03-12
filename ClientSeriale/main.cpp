@@ -13,16 +13,32 @@
 int init(char *comname, int mode);       // Funzione che apre una seriale e la inizializza
 #define   VIRTUALTTY
 #define TYPE 0
-#define TERMINATORECRU 4
-#define DATI 1
-#define CHECKSUM 2
-#define TERMINATORENOR 3
-
+#define DATIPWM 3
+#define CHECKSUMPWM 4
+#define TERMINATOREPWM 5
+#define CHECKSUMSERVOSTOP 6
+#define TERMINATORESERVOSTOP 7
+#define DATIDCSP 8
+#define CHECKSUMDCSP 9
+#define TERMINATOREDCSP 10
+#define CHECKSUMDCSPWM 11
+#define TERMINATOREDCSPWM 12
+#define CHECKSUMDCSPOW 13
+#define TERMINATOREDCSPOW 14
+#define CHECKSUMST 15
+#define TERMINATOREST 16
+#define CHECKSUMSD 17
+#define TERMINATORESD 18
+#define ERR -2
+#define START 1
+#define OFF -1
+#define OFFTYPE -3
 #define SERIALE "/dev/ttyUSB0"
 int main()
 {
     int errread;
     int com = init(SERIALE,O_RDWR);        // Apre il canale seriale sia in ingresso sia in uscita
+    int stato=OFF;
     if(com>0){
         do {
             //read(com,&car,1);
@@ -31,9 +47,66 @@ int main()
                 if (errread < 0) {
                     perror("Errore di lettura: ");
                 }
+            }
+            case OFF:{
+                if(car==0xCC){
+                    stato=OFFTYPE;
+                }else{
+                    printf("ALLO START NON SI HA L'INIZIO PACCHETTO")
+                }
+            }
+            case OFFTYPE:{
+                if(car==0xCC){
+                    stato=CHECKSUMST;
+                }else{
+                    printf("ALLO START TIPO NON VALIDO\n")
+                }
+            }
+            case START:{
+                if(car==Ox00){
+                    stato=TYPE;
+                }else{
+                    printf("TERMINATORE NON PRESENTE ALL'INIZIO\n");
+                }
                 break;
             }
-        }while
+            case TYPE:{
+                switch(car){
+                    case 0xD2:{
+                        stato=DATIPWM;
+                        break;
+                    }
+                    case 0x55:{
+                        stato=CHECKSUMSERVOSTOP;
+                        break;
+                    }
+                    case 0x87:{
+                        //stoppa i servo
+                        stato=DATIDCSP;
+                        break;
+                    }
+                    case 0x99:{
+                        //stoppa i DC
+                        stato=CHECKSUMDCSPWM;
+                        break;
+                    }
+                    case 0x4B:{
+                        //stoppa all power
+                        stato=CHECKSUMDCSPOW;
+                        break;
+                    }
+                    case 0x1E:{
+                        //shutdown
+                        stato=CHECKSUMSD;
+                        break;
+                    }
+                    default:{
+                        //correzione hamming
+                    }
+                }
+                break;
+            }
+        }while(1);
     close(com);
     return 0;
 }
